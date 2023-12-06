@@ -78,6 +78,7 @@ void menu() {
 	printf("2 : 관람차 생성\n");
 	printf("3 : 자이로드롭 생성\n");
 	printf("4 : 회전목마 생성\n");
+	printf("b : 기구 설치\n");
 	printf("d : 기구 삭제\n");
 	printf("v : 시점 변경\n");
 	printf("----------- front view 명령어------------\n");
@@ -349,6 +350,12 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 			rides_sel_cnt = 4;
 		}
 		break;
+	case 'b':
+		if (view_check == 0) {
+			if (rides_collision[rides_sel_cnt] == false)
+				rides_install_check[rides_sel_cnt] = true;
+		}
+		break;
 	case 'r':   // 리셋
 		reset();
 		InitBuffer();
@@ -407,11 +414,13 @@ void Motion(int x, int y) {
 
 
 	if (view_check == 0) {
-		normalized_x = (1.0 - (2.0 * x / 600)) * 10;
-		normalized_y = (1.0 - (2.0 * y / 600)) * 10;
-		if (rides_sel_check[rides_sel_cnt] == true) {
-			rides_x[rides_sel_cnt] = normalized_x;
-			rides_z[rides_sel_cnt] = normalized_y;
+		if (rides_install_check[rides_sel_cnt] == false) {
+			normalized_x = (1.0 - (2.0 * x / 600)) * 10;
+			normalized_y = (1.0 - (2.0 * y / 600)) * 10;
+			if (rides_sel_check[rides_sel_cnt] == true) {
+				rides_x[rides_sel_cnt] = normalized_x;
+				rides_z[rides_sel_cnt] = normalized_y;
+			}
 		}
 	}
 	else if (view_check == 1) {
