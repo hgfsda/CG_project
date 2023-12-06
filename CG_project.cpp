@@ -461,18 +461,38 @@ void Motion(int x, int y) {
 	drawScene();
 }
 
+// 기구의 충돌 검사
 BOOL rides_collision_check() {
-	if (rides_radian[rides_sel_cnt] == 0) {
+	if (rides_radian[rides_sel_cnt] == 0) {   // 회전하지 않은 기구가 바닥을 벗어난 경우
 		if (rides_x[rides_sel_cnt] - len_x[rides_sel_cnt] < -10) return rides_collision[rides_sel_cnt] = true;
 		if (rides_x[rides_sel_cnt] + len_x[rides_sel_cnt] > 10) return rides_collision[rides_sel_cnt] = true;
 		if (rides_z[rides_sel_cnt] - len_z[rides_sel_cnt] < -10) return rides_collision[rides_sel_cnt] = true;
 		if (rides_z[rides_sel_cnt] + len_z[rides_sel_cnt] > 10) return rides_collision[rides_sel_cnt] = true;
 	}
-	else if (rides_radian[rides_sel_cnt] == 90) {
+	else if (rides_radian[rides_sel_cnt] == 90) {   // 회전한 기구가 바닥을 벗어난 경우
 		if (rides_x[rides_sel_cnt] - len_z[rides_sel_cnt] < -10) return rides_collision[rides_sel_cnt] = true;
 		if (rides_x[rides_sel_cnt] + len_z[rides_sel_cnt] > 10) return rides_collision[rides_sel_cnt] = true;
 		if (rides_z[rides_sel_cnt] - len_x[rides_sel_cnt] < -10) return rides_collision[rides_sel_cnt] = true;
 		if (rides_z[rides_sel_cnt] + len_x[rides_sel_cnt] > 10) return rides_collision[rides_sel_cnt] = true;
+	}
+	for (int i = 1; i < 5; ++i) {
+		if (i != rides_sel_cnt && rides_install_check[i] == true) {
+			if (rides_radian[rides_sel_cnt] == 0) {              // 기구가 회전하지 않은 경우
+				if(rides_radian[i] == 0){          // 설치된 기구가 회전하지 않은 경우
+					if (rides_x[rides_sel_cnt] - len_x[rides_sel_cnt] < rides_x[i] + len_x[i] &&
+						rides_x[rides_sel_cnt] + len_x[rides_sel_cnt] > rides_x[i] - len_x[i] &&
+						rides_z[rides_sel_cnt] - len_z[rides_sel_cnt] < rides_z[i] + len_z[i] &&
+						rides_z[rides_sel_cnt] + len_z[rides_sel_cnt] > rides_z[i] - len_z[i]) 
+						return rides_collision[rides_sel_cnt] = true;
+				}         
+				else if (rides_radian[i] == 90) {    // 설치된 기구가 회전한 경우
+				}
+			}
+			else if (rides_radian[rides_sel_cnt] == 90) {   // 기구가 회전한 경우
+				if (rides_radian[i] == 0) {}
+				else if (rides_radian[i] == 90) {}
+			}
+		}
 	}
 
 	return rides_collision[rides_sel_cnt] = false;
