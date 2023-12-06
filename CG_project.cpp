@@ -486,6 +486,11 @@ BOOL rides_collision_check() {
 						return rides_collision[rides_sel_cnt] = true;
 				}         
 				else if (rides_radian[i] == 90) {    // 설치된 기구가 회전한 경우
+					if (rides_x[rides_sel_cnt] - len_x[rides_sel_cnt] < rides_x[i] + len_z[i] &&
+						rides_x[rides_sel_cnt] + len_x[rides_sel_cnt] > rides_x[i] - len_z[i] &&
+						rides_z[rides_sel_cnt] - len_z[rides_sel_cnt] < rides_z[i] + len_x[i] &&
+						rides_z[rides_sel_cnt] + len_z[rides_sel_cnt] > rides_z[i] - len_x[i])
+						return rides_collision[rides_sel_cnt] = true;
 				}
 			}
 			else if (rides_radian[rides_sel_cnt] == 90) {   // 기구가 회전한 경우
