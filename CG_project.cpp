@@ -33,13 +33,25 @@ GLuint vertexShader; //--- 버텍스 세이더 객체
 GLuint fragmentShader; //--- 프래그먼트 세이더 객체
 GLchar* vertexSource, * fragmentSource; //--- 소스코드 저장 변수
 
-float floor_xz[36] = {
-	 -10.0, 0.0, -10.0, 0.0, 1.0, 0.0,  -10.0, 0.0, 10.0, 0.0, 1.0, 0.0,  10.0, 0.0, 10.0, 0.0, 1.0, 0.0,
-	 -10.0, 0.0, -10.0, 0.0, 1.0, 0.0,  10.0, 0.0, 10.0, 0.0, 1.0, 0.0,  10.0, 0.0, -10.0, 0.0, 1.0, 0.0
+float floor_xz[] = {
+	 -10.0, 0.0, -10.0,    0.0, 1.0, 0.0,  0, 0,
+	 -10.0, 0.0, 10.0,     0.0, 1.0, 0.0,  0, 1,
+	 10.0, 0.0, 10.0,      0.0, 1.0, 0.0,  1, 1,
+	 -10.0, 0.0, -10.0,    0.0, 1.0, 0.0,  0, 0,
+	 10.0, 0.0, 10.0,      0.0, 1.0, 0.0,  1, 1,
+	 10.0, 0.0, -10.0,     0.0, 1.0, 0.0,  1, 0
 };
 
-GLuint vao[11], vbo[11];
-std::vector<GLfloat> data[7];
+float rides_data[5][12] = {
+	{},
+	{8.0, 0.0, 2.0, -8.0, 0.0, 2.0, -8.0, 0.0, -2.0, 8.0, 0.0, -2.0},
+	{5.0, 0.0, 2.0, -5.0, 0.0, 2.0, -5.0, 0.0, -2.0, 5.0, 0.0, -2.0},
+	{4.0, 0.0, 4.0, -4.0, 0.0, 4.0, -4.0, 0.0, -4.0, 4.0, 0.0, -4.0},
+	{4.0, 0.0, 4.0, -4.0, 0.0, 4.0, -4.0, 0.0, -4.0, 4.0, 0.0, -4.0}
+};
+
+GLuint vao[1000], vbo[1000];
+std::vector<GLfloat> data[1000];
 glm::vec3 cameraPos;      //--- 카메라 위치
 glm::vec3 cameraDirection; //--- 카메라 바라보는 방향
 glm::vec3 cameraUp;        //--- 카메라 위쪽 방향
@@ -53,7 +65,12 @@ int window_w, window_h;
 BOOL key_w, key_a, key_s, key_d;
 
 int view_check;                                  // 시점 확인   0. top_view / 1. front_view
-
+float rides_x[5], rides_z[5];    // 기구 중점
+int rides_sel_cnt;                 // 0. 없음 / 1. 롤러코스터 / 2. 관람차 / 3. 자이로드롭 / 4. 회전목마
+BOOL rides_sel_check[5];             // 기구가 선택되었는지 0. 선택 안됨
+BOOL rides_install_check[5];  // 기구가 설치되었는지
+BOOL rides_collision[5];  // 설치 기구가 충돌하는지    충돌하면 true / 안하면 false
+float len_x[5], len_z[5];  // 기구 가로 세로 길이
 
 void menu() {
 	printf("------------ top view 명령어-------------\n");
@@ -82,6 +99,15 @@ void reset() {
 	yaw = -90;
 	fov = 50;
 	view_check = 1;
+	rides_sel_cnt = 0;
+	len_x[1] = len_x[2] = 2, len_x[3] = len_x[4] = 4;
+	len_z[1] = 8, len_z[2] = 5, len_z[3] = len_z[4] = 4;
+	for (int i = 0; i < 5; ++i) {
+		rides_install_check[i] = false;
+		rides_sel_check[i] = false;
+		rides_x[i] = rides_z[i] = 0;
+		rides_collision[i] = false;
+	}
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -100,8 +126,8 @@ void main(int argc, char** argv)
 	//--- 윈도우 생성하기
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
-	glutInitWindowPosition(200, 30);
-	glutInitWindowSize(800, 600);
+	glutInitWindowPosition(300, 30);
+	glutInitWindowSize(600, 600);
 	glutCreateWindow("Example");
 	glewExperimental = GL_TRUE;
 	menu();
@@ -128,17 +154,25 @@ GLvoid drawScene() {
 	int viewLoc = glGetUniformLocation(shaderProgramID, "view"); //--- 버텍스 세이더에서 뷰잉 변환 행렬 변수값을 받아온다.
 	int projLoc = glGetUniformLocation(shaderProgramID, "projection");
 
+	unsigned int objColorLocation = glGetUniformLocation(shaderProgramID, "objectColor");
+	unsigned int lightPosLocation = glGetUniformLocation(shaderProgramID, "lightPos");
+	glUniform3f(lightPosLocation, 0.0, 5.0, 0.0);
+	unsigned int lightColorLocation = glGetUniformLocation(shaderProgramID, "lightColor");
+	glUniform3f(lightColorLocation, 1.0, 1.0, 1.0);
+	unsigned int viewPosLocation = glGetUniformLocation(shaderProgramID, "viewPos");
+	glUniform3f(viewPosLocation, cameraPos_x, cameraPos_y, cameraPos_z);
+
 	if (view_check == 0) {
 		glm::vec3 cameraPos = glm::vec3(0.0f, 5.0f, 0.0f);      //--- 카메라 위치
 		glm::vec3 cameraDirection = glm::vec3(0.0f, 0.0f, 0.0f); //--- 카메라 바라보는 방향
-		glm::vec3 cameraUp = glm::vec3(0.0f, 0.0f, -1.0f);        //--- 카메라 위쪽 방향
+		glm::vec3 cameraUp = glm::vec3(0.0f, 0.0f, 1.0f);        //--- 카메라 위쪽 방향
 
 		glm::mat4 vTransform = glm::mat4(1.0f);
 		vTransform = glm::lookAt(cameraPos, cameraDirection, cameraUp);
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &vTransform[0][0]);
 
 		glm::mat4 pTransform = glm::mat4(1.0f);
-		pTransform = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, -15.0f, 15.0f);
+		pTransform = glm::ortho(-11.0f, 11.0f, -11.0f, 11.0f, -11.0f, 11.0f);
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, &pTransform[0][0]);
 	}
 	else if (view_check == 1) {
@@ -159,17 +193,30 @@ GLvoid drawScene() {
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, &pTransform[0][0]);
 	}
 
-	unsigned int objColorLocation = glGetUniformLocation(shaderProgramID, "objectColor");
-	unsigned int lightPosLocation = glGetUniformLocation(shaderProgramID, "lightPos");
-	glUniform3f(lightPosLocation, 0.0, 5.0, 0.0);
-	unsigned int lightColorLocation = glGetUniformLocation(shaderProgramID, "lightColor");
-	glUniform3f(lightColorLocation, 1.0, 1.0, 1.0);
-	unsigned int viewPosLocation = glGetUniformLocation(shaderProgramID, "viewPos");
-	glUniform3f(viewPosLocation, cameraPos_x, cameraPos_y, cameraPos_z);
+	// 놀이 기구
+	for (int i = 1; i < 5; ++i) {
+		if (rides_sel_check[i] == true || rides_install_check[i] == true) {
+			if (view_check == 0) {
+				glLineWidth(2);
+				if (!rides_collision[i])
+					glUniform3f(objColorLocation, 0.0, 1.0, 0.0);
+				else
+					glUniform3f(objColorLocation, 1.0, 0.0, 0.0);
+				glm::mat4 border = glm::mat4(1.0f);
+				glm::mat4 border_T = glm::mat4(1.0f);
+				border_T = glm::translate(border_T, glm::vec3(rides_x[i], 0, rides_z[i]));
+				border = border_T;
+				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(border));
+				glBindVertexArray(vao[i + 10]);
+				glDrawArrays(GL_LINE_LOOP, 0, 4);
+			}
+		}
+	}
 
-	glm::mat4 Line = glm::mat4(1.0f);
+	// 바닥
+	glm::mat4 floor = glm::mat4(1.0f);
 	glUniform3f(objColorLocation, 0.5, 0.5, 0.5);
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(Line));
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(floor));
 	glBindVertexArray(vao[10]);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -178,30 +225,40 @@ GLvoid drawScene() {
 
 void InitBuffer()
 {
-	glGenVertexArrays(11, vao);
-	glGenBuffers(11, vbo);
+	glGenVertexArrays(1000, vao);
+	glGenBuffers(1000, vbo);
 
 	for (int i = 0; i < 7; ++i) {
 		glBindVertexArray(vao[i]);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo[i]);
 		glBufferData(GL_ARRAY_BUFFER, data[i].size() * sizeof(GLfloat), data[i].data(), GL_STATIC_DRAW);
 
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
 		glEnableVertexAttribArray(0);
-
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+		glEnableVertexAttribArray(2);
 	}
 
 	glBindVertexArray(vao[10]);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[10]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(floor_xz), floor_xz, GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
 	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+	glEnableVertexAttribArray(2);
+
+	for (int i = 11; i < 15; ++i) {
+		glBindVertexArray(vao[i]);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo[i]);
+		glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(GLfloat), rides_data[i - 10], GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(0);
+	}
 }
 
 void timer(int value) {
@@ -248,18 +305,49 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 			key_d = true;
 		break;
 	case 'v':
-		if (view_check == 1)
+		if (view_check == 1) {
+			key_w = key_a = key_s = key_d = false;
 			view_check = 0;
-		else if (view_check == 0)
+		}
+		else if (view_check == 0) {
+			for (int i = 0; i < 5; ++i) {
+				rides_sel_check[i] = false;
+			}
+			rides_sel_cnt = 0;
 			view_check = 1;
+		}
 		break;
 	case '1':
+		if (view_check == 1){}
+		else if (view_check == 0) {
+			rides_sel_check[1] = !rides_sel_check[1];
+			rides_sel_check[2] = rides_sel_check[3] = rides_sel_check[4] = false;
+ 			rides_sel_cnt = 1;
+		}
 		break;
 	case '2':
+		if (view_check == 1) {}
+		else if (view_check == 0) {
+			rides_sel_check[2] = !rides_sel_check[2];
+			rides_sel_check[1] = rides_sel_check[3] = rides_sel_check[4] = false;
+			rides_sel_cnt = 2;
+		}
 		break;
 	case '3':
+		if (view_check == 1) {}
+		else if (view_check == 0) {
+			rides_sel_check[3] = !rides_sel_check[3];
+			rides_sel_check[2] = rides_sel_check[1] = rides_sel_check[4] = false;
+			rides_sel_cnt = 3;
+		}
 		break;
 	case '4':
+		if (view_check == 1) {}
+		else if (view_check == 0) {
+			rides_sel_check[4] = !rides_sel_check[4];
+			rides_sel_check[2] = rides_sel_check[3] = rides_sel_check[1] = false;
+			rides_sel_cnt = 4;
+		}
 		break;
 	case 'r':   // 리셋
 		reset();
@@ -317,10 +405,18 @@ void Mouse(int button, int state, int x, int y) {
 void Motion(int x, int y) {
 	float normalized_x, normalized_y;
 
-	normalized_x = (2.0 * x / 800) - 1.0;
-	normalized_y = 1.0 - (2.0 * y / 600);
-	if (view_check == 0) {}
+
+	if (view_check == 0) {
+		normalized_x = (1.0 - (2.0 * x / 600)) * 10;
+		normalized_y = (1.0 - (2.0 * y / 600)) * 10;
+		if (rides_sel_check[rides_sel_cnt] == true) {
+			rides_x[rides_sel_cnt] = normalized_x;
+			rides_z[rides_sel_cnt] = normalized_y;
+		}
+	}
 	else if (view_check == 1) {
+		normalized_x = (2.0 * x / 600) - 1.0;
+		normalized_y = 1.0 - (2.0 * y / 600);
 		if (left_button == true) {
 			float delta_x = normalized_x - prev_mouse_x;
 			float delta_y = normalized_y - prev_mouse_y;
@@ -426,17 +522,17 @@ char* filetobuf(const char* file)
 	FILE* fptr;
 	long length;
 	char* buf;
-	fptr = fopen(file, "rb"); // Open file for reading 
-	if (!fptr) // Return NULL on failure 
+	fptr = fopen(file, "rb");
+	if (!fptr)
 		return NULL;
-	fseek(fptr, 0, SEEK_END); // Seek to the end of the file 
-	length = ftell(fptr); // Find out how many bytes into the file we are 
-	buf = (char*)malloc(length + 1); // Allocate a buffer for the entire length of the file and a null terminator 
-	fseek(fptr, 0, SEEK_SET); // Go back to the beginning of the file 
-	fread(buf, length, 1, fptr); // Read the contents of the file in to the buffer 
-	fclose(fptr); // Close the file 
-	buf[length] = 0; // Null terminator 
-	return buf; // Return the buffer 
+	fseek(fptr, 0, SEEK_END);
+	length = ftell(fptr);
+	buf = (char*)malloc(length + 1);
+	fseek(fptr, 0, SEEK_SET);
+	fread(buf, length, 1, fptr);
+	fclose(fptr);
+	buf[length] = 0;
+	return buf;
 }
 
 void ReadObj(FILE* path, int index) {
@@ -486,6 +582,8 @@ void ReadObj(FILE* path, int index) {
 		data[index].push_back(normals[faces_normals[i].x].x);
 		data[index].push_back(normals[faces_normals[i].x].y);
 		data[index].push_back(normals[faces_normals[i].x].z);
+		data[index].push_back(uvs[uvData[i].x].x);
+		data[index].push_back(uvs[uvData[i].x].y);
 
 		data[index].push_back(vertices[faces[i].y].x);
 		data[index].push_back(vertices[faces[i].y].y);
@@ -493,6 +591,8 @@ void ReadObj(FILE* path, int index) {
 		data[index].push_back(normals[faces_normals[i].y].x);
 		data[index].push_back(normals[faces_normals[i].y].y);
 		data[index].push_back(normals[faces_normals[i].y].z);
+		data[index].push_back(uvs[uvData[i].y].x);
+		data[index].push_back(uvs[uvData[i].y].y);
 
 		data[index].push_back(vertices[faces[i].z].x);
 		data[index].push_back(vertices[faces[i].z].y);
@@ -500,5 +600,7 @@ void ReadObj(FILE* path, int index) {
 		data[index].push_back(normals[faces_normals[i].z].x);
 		data[index].push_back(normals[faces_normals[i].z].y);
 		data[index].push_back(normals[faces_normals[i].z].z);
+		data[index].push_back(uvs[uvData[i].z].x);
+		data[index].push_back(uvs[uvData[i].z].y);
 	}
 }
