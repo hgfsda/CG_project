@@ -28,6 +28,8 @@ GLvoid MouseWheel(int wheel, int direction, int x, int y);
 char* filetobuf(const char* file);
 void ReadObj(FILE* path, int index);
 
+void rides_collision_check(int rides_sel_cnt);
+
 GLuint shaderProgramID; //--- 세이더 프로그램 이름
 GLuint vertexShader; //--- 버텍스 세이더 객체
 GLuint fragmentShader; //--- 프래그먼트 세이더 객체
@@ -71,6 +73,7 @@ BOOL rides_sel_check[5];             // 기구가 선택되었는지 0. 선택 안됨
 BOOL rides_install_check[5];  // 기구가 설치되었는지
 BOOL rides_collision[5];  // 설치 기구가 충돌하는지    충돌하면 true / 안하면 false
 float len_x[5], len_z[5];  // 기구 가로 세로 길이
+float rides_radian[5];     // 기구 회전
 
 void menu() {
 	printf("------------ top view 명령어-------------\n");
@@ -108,6 +111,7 @@ void reset() {
 		rides_sel_check[i] = false;
 		rides_x[i] = rides_z[i] = 0;
 		rides_collision[i] = false;
+		rides_radian[i] = 0;
 	}
 
 	glEnable(GL_DEPTH_TEST);
@@ -205,8 +209,10 @@ GLvoid drawScene() {
 					glUniform3f(objColorLocation, 1.0, 0.0, 0.0);
 				glm::mat4 border = glm::mat4(1.0f);
 				glm::mat4 border_T = glm::mat4(1.0f);
+				glm::mat4 border_R = glm::mat4(1.0f);
 				border_T = glm::translate(border_T, glm::vec3(rides_x[i], 0, rides_z[i]));
-				border = border_T;
+				border_R = glm::rotate(border_R, glm::radians(rides_radian[i]), glm::vec3(0.0, 1.0, 0.0));
+				border = border_T * border_R;
 				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(border));
 				glBindVertexArray(vao[i + 10]);
 				glDrawArrays(GL_LINE_LOOP, 0, 4);
@@ -359,7 +365,13 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 				rides_install_check[rides_sel_cnt] = true;
 		}
 		break;
-	case 'r':   // 리셋
+	case 'r':
+		if (view_check == 0) {
+			if(rides_collision[rides_sel_cnt] == false)
+				rides_radian[rides_sel_cnt] = 90 - rides_radian[rides_sel_cnt];
+		}
+		break;
+	case '`':   // 리셋
 		reset();
 		InitBuffer();
 		break;
@@ -397,7 +409,7 @@ float prev_mouse_x, prev_mouse_y;
 void Mouse(int button, int state, int x, int y) {
 	float normalized_x, normalized_y;
 
-	normalized_x = (2.0 * x / 800) - 1.0;
+	normalized_x = (2.0 * x / 600) - 1.0;
 	normalized_y = 1.0 - (2.0 * y / 600);
 	if (view_check == 0) {}
 	else if (view_check == 1) {
@@ -446,6 +458,10 @@ void Motion(int x, int y) {
 		}
 	}
 	drawScene();
+}
+
+void rides_collision_check(int rides_sel_cnt) {
+
 }
 
 GLvoid MouseWheel(int wheel, int direction, int x, int y) {
