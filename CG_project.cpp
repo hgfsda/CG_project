@@ -28,7 +28,7 @@ GLvoid MouseWheel(int wheel, int direction, int x, int y);
 char* filetobuf(const char* file);
 void ReadObj(FILE* path, int index);
 
-void rides_collision_check(int rides_sel_cnt);
+BOOL rides_collision_check();
 
 GLuint shaderProgramID; //--- 세이더 프로그램 이름
 GLuint vertexShader; //--- 버텍스 세이더 객체
@@ -46,7 +46,7 @@ float floor_xz[] = {
 
 float rides_data[5][12] = {
 	{},
-	{8.0, 0.0, 2.0, -8.0, 0.0, 2.0, -8.0, 0.0, -2.0, 8.0, 0.0, -2.0},
+	{9.0, 0.0, 3.0, -9.0, 0.0, 3.0, -9.0, 0.0, -3.0, 9.0, 0.0, -3.0},
 	{5.0, 0.0, 2.0, -5.0, 0.0, 2.0, -5.0, 0.0, -2.0, 5.0, 0.0, -2.0},
 	{4.0, 0.0, 4.0, -4.0, 0.0, 4.0, -4.0, 0.0, -4.0, 4.0, 0.0, -4.0},
 	{4.0, 0.0, 4.0, -4.0, 0.0, 4.0, -4.0, 0.0, -4.0, 4.0, 0.0, -4.0}
@@ -104,8 +104,8 @@ void reset() {
 	fov = 50;
 	view_check = 1;
 	rides_sel_cnt = 0;
-	len_x[1] = len_x[2] = 2, len_x[3] = len_x[4] = 4;
-	len_z[1] = 8, len_z[2] = 5, len_z[3] = len_z[4] = 4;
+	len_x[1] = 9, len_x[2] = 5, len_x[3] = len_x[4] = 4;
+	len_z[1] = 3, len_z[2] = 2, len_z[3] = len_z[4] = 4;
 	for (int i = 0; i < 5; ++i) {
 		rides_install_check[i] = false;
 		rides_sel_check[i] = false;
@@ -177,7 +177,7 @@ GLvoid drawScene() {
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &vTransform[0][0]);
 
 		glm::mat4 pTransform = glm::mat4(1.0f);
-		pTransform = glm::ortho(-11.0f, 11.0f, -11.0f, 11.0f, -11.0f, 11.0f);
+		pTransform = glm::ortho(11.0f, -11.0f, 11.0f, -11.0f, 11.0f, -11.0f);
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, &pTransform[0][0]);
 	}
 	else if (view_check == 1) {
@@ -367,7 +367,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 		break;
 	case 'r':
 		if (view_check == 0) {
-			if(rides_collision[rides_sel_cnt] == false)
+			if(rides_install_check[rides_sel_cnt] == false)
 				rides_radian[rides_sel_cnt] = 90 - rides_radian[rides_sel_cnt];
 		}
 		break;
@@ -430,11 +430,12 @@ void Motion(int x, int y) {
 
 	if (view_check == 0) {
 		if (rides_install_check[rides_sel_cnt] == false) {
-			normalized_x = (1.0 - (2.0 * x / 600)) * 10;
-			normalized_y = (1.0 - (2.0 * y / 600)) * 10;
+			normalized_x = ((2.0 * x / 600) - 1.0) * 10;
+			normalized_y = ((2.0 * y / 600) - 1.0) * 10;
 			if (rides_sel_check[rides_sel_cnt] == true) {
 				rides_x[rides_sel_cnt] = normalized_x;
 				rides_z[rides_sel_cnt] = normalized_y;
+				rides_collision_check();
 			}
 		}
 	}
@@ -460,8 +461,13 @@ void Motion(int x, int y) {
 	drawScene();
 }
 
-void rides_collision_check(int rides_sel_cnt) {
+BOOL rides_collision_check() {
+	if (rides_x[rides_sel_cnt] - len_x[rides_sel_cnt] < -10) return rides_collision[rides_sel_cnt] = true;
+	if (rides_x[rides_sel_cnt] + len_x[rides_sel_cnt] > 10) return rides_collision[rides_sel_cnt] = true;
+	if (rides_z[rides_sel_cnt] - len_z[rides_sel_cnt] < -10) return rides_collision[rides_sel_cnt] = true;
+	if (rides_z[rides_sel_cnt] + len_z[rides_sel_cnt] > 10) return rides_collision[rides_sel_cnt] = true;
 
+	return rides_collision[rides_sel_cnt] = false;
 }
 
 GLvoid MouseWheel(int wheel, int direction, int x, int y) {
