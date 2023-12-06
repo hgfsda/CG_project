@@ -333,6 +333,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 			rides_sel_check[1] = !rides_sel_check[1];
 			rides_sel_check[2] = rides_sel_check[3] = rides_sel_check[4] = false;
  			rides_sel_cnt = 1;
+			rides_collision_check();
 		}
 		break;
 	case '2':
@@ -341,6 +342,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 			rides_sel_check[2] = !rides_sel_check[2];
 			rides_sel_check[1] = rides_sel_check[3] = rides_sel_check[4] = false;
 			rides_sel_cnt = 2;
+			rides_collision_check();
 		}
 		break;
 	case '3':
@@ -349,6 +351,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 			rides_sel_check[3] = !rides_sel_check[3];
 			rides_sel_check[2] = rides_sel_check[1] = rides_sel_check[4] = false;
 			rides_sel_cnt = 3;
+			rides_collision_check();
 		}
 		break;
 	case '4':
@@ -357,6 +360,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 			rides_sel_check[4] = !rides_sel_check[4];
 			rides_sel_check[2] = rides_sel_check[3] = rides_sel_check[1] = false;
 			rides_sel_cnt = 4;
+			rides_collision_check();
 		}
 		break;
 	case 'b':
@@ -367,8 +371,10 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 		break;
 	case 'r':
 		if (view_check == 0) {
-			if(rides_install_check[rides_sel_cnt] == false)
+			if (rides_install_check[rides_sel_cnt] == false) {
 				rides_radian[rides_sel_cnt] = 90 - rides_radian[rides_sel_cnt];
+				rides_collision_check();
+			}
 		}
 		break;
 	case '`':   // ¸®¼Â
