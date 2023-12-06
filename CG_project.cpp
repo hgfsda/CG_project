@@ -304,6 +304,9 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 	case 'd':
 		if (view_check == 1)
 			key_d = true;
+		else if (view_check == 0) {
+			rides_install_check[rides_sel_cnt] = false;
+		}
 		break;
 	case 'v':
 		if (view_check == 1) {
