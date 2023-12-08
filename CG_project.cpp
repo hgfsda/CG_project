@@ -54,12 +54,13 @@ float rides_data[5][12] = {
 };
 
 // 롤러코스터
-GLfloat point[8][3];
-GLfloat matrix_2[3][3] = { {2.0f, -4.0f, 2.0f}, {-3.0f, 4.0f, -1.0f}, {1.0f, 0.0f, 0.0f} };
-GLfloat matrix_3[4][4] = { {-1.0f, 3.0f, -3.0f, 1.0f},
-						  {2.0f, -5.0f, 4.0f, -1.0f},
-						  {-1.0f, 0.0f, 1.0f, 0.0f},
-						  {0.0f, 2.0f, 0.0f, 0.0f} };
+GLfloat point[9][3] = { {-8, 0.0, 2.5}, {-2.0, 0.0, 2.5}, {2.0, 0.0, 2.5}, {8, 0.0, 2.5},
+						{8, 0.0, -2.5}, {2.0, 0.0, -2.5}, {-2.0, 0.0, -2.5}, {-8, 0.0, -2.5}, {} };
+GLfloat matrix_2[3][3] = { {2.0, -4.0, 2.0}, {-3.0, 4.0, -1.0}, {1.0, 0.0, 0.0} };
+GLfloat matrix_3[4][4] = { {-1.0, 3.0, -3.0, 1.0},
+						  {2.0, -5.0, 4.0, -1.0},
+						  {-1.0, 0.0, 1.0, 0.0},
+						  {0.0, 2.0, 0.0, 0.0} };
 
 GLuint vao[1000], vbo[1000];
 std::vector<GLfloat> data[1000];
@@ -128,26 +129,36 @@ void reset() {
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	const char* cube_obj = "cube.obj";
-	FILE* file_cube[7];
-	for (int i = 0; i < 7; ++i) {
-		file_cube[i] = fopen(cube_obj, "r");
-		ReadObj(file_cube[i], i);
-		fclose(file_cube[i]);
-	}
+	const char* cube_obj = "obj\\cube.obj";
+	const char* cylinder_obj = "obj\\cylinder.obj";
+	const char* sphere_obj = "obj\\sphere.obj";
+	const char* cone_obj = "obj\\cone.obj";
+	FILE* file_cube;
+	FILE* file_cylinder;
+	FILE* file_sphere;
+	FILE* file_cone;
+	file_cube = fopen(cube_obj, "r");
+	ReadObj(file_cube, 0);
+	fclose(file_cube);
+	file_cylinder = fopen(cylinder_obj, "r");
+	ReadObj(file_cylinder, 1);
+	fclose(file_cylinder);
+	file_sphere = fopen(sphere_obj, "r");
+	ReadObj(file_sphere, 2);
+	fclose(file_sphere);
+	file_cone = fopen(cone_obj, "r");
+	ReadObj(file_cone, 3);
+	fclose(file_cone);
 }
 
 void RollerCoaster_rand_num() {
 	srand(time(NULL));
-	for (int i = 0; i < 7; i++)
-	{
-		point[i][0] = (rand() % 1801 - 900) * 0.01;    // -9 <= x <= 9
+	for (int i = 0; i < 8; ++i) {
 		point[i][1] = (rand() % 501 + 500) * 0.01;    // 5 <= y <= 10
-		point[i][2] = (rand() % 601 - 300) * 0.01;    // -3 <= z <= 3
 	}
-	point[7][0] = point[0][0];
-	point[7][1] = point[0][1];
-	point[7][2] = point[0][2];
+	point[8][0] = point[0][0];
+	point[8][1] = point[0][1];
+	point[8][2] = point[0][2];
 }
 
 void main(int argc, char** argv)
@@ -177,7 +188,7 @@ void main(int argc, char** argv)
 }
 
 GLvoid drawScene() {
-	glClearColor(0.0, 0.0, 0.0, 1.0);
+	glClearColor(0.2, 0.5, 0.8, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(shaderProgramID);
 	int modelLoc = glGetUniformLocation(shaderProgramID, "model"); //--- 버텍스 세이더에서 모델링 변환 행렬 변수값을 받아온다.
@@ -248,9 +259,59 @@ GLvoid drawScene() {
 				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(border));
 				glUniform3f(objColorLocation, 1.0, 0.0, 0.0);
 				glBegin(GL_POINTS);
-				for (int i = 0; i < 8; ++i)
+				for (int i = 0; i < 9; ++i)
 					glVertex3f(point[i][0], point[i][1], point[i][2]);
 				glEnd();
+
+				// 곡선 그리기
+				glLineWidth(7.0f);
+				GLfloat result[4][3];
+				GLfloat t = 0.0f;
+				GLfloat point_x, point_y, point_z;
+
+				memset(result, 0, sizeof(result));
+				for (int i = 0; i < 3; ++i) {
+					for (int j = 0; j < 3; ++j) {
+						result[i][0] += matrix_2[i][j] * point[j][0];
+						result[i][1] += matrix_2[i][j] * point[j][1];
+						result[i][2] += matrix_2[i][j] * point[j][2];
+					}
+				}
+				glUniform3f(objColorLocation, 0.0, 1.0, 0.0);
+				glBegin(GL_LINE_STRIP);
+				while (t < 0.5f) {
+					point_x = result[2][0] + t * (result[1][0] + result[0][0] * t);
+					point_y = result[2][1] + t * (result[1][1] + result[0][1] * t);
+					point_z = result[2][2] + t * (result[1][2] + result[0][2] * t);
+					glVertex3f(point_x, point_y, point_z);
+					t += 0.01f;
+				}
+				glEnd();
+
+				for (int cubic_case = 0; cubic_case < 9 - 2; ++cubic_case)
+				{
+					memset(result, 0, sizeof(result));
+					for (int i = 0; i < 4; ++i)
+					{
+						for (int j = 0; j < 4; ++j)
+						{
+							result[i][0] += matrix_3[i][j] * point[j + cubic_case][0];
+							result[i][1] += matrix_3[i][j] * point[j + cubic_case][1];
+							result[i][2] += matrix_3[i][j] * point[j + cubic_case][2];
+						}
+					}
+
+					t = 0.0f;
+					glBegin(GL_LINE_STRIP);
+					while (t < 1.0f) {
+						point_x = (result[3][0] + t * (result[2][0] + t * (result[1][0] + result[0][0] * t))) * 0.5f;
+						point_y = (result[3][1] + t * (result[2][1] + t * (result[1][1] + result[0][1] * t))) * 0.5f;
+						point_z = (result[3][2] + t * (result[2][2] + t * (result[1][2] + result[0][2] * t))) * 0.5f;
+						glVertex3f(point_x, point_y, point_z);
+						t += 0.01f;
+					}
+					glEnd();
+				}
 			}
 			else if (i == 2) {   // 관람차인 경우
 				 
@@ -279,7 +340,7 @@ void InitBuffer()
 	glGenVertexArrays(1000, vao);
 	glGenBuffers(1000, vbo);
 
-	for (int i = 0; i < 7; ++i) {
+	for (int i = 0; i < 4; ++i) {
 		glBindVertexArray(vao[i]);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo[i]);
 		glBufferData(GL_ARRAY_BUFFER, data[i].size() * sizeof(GLfloat), data[i].data(), GL_STATIC_DRAW);

@@ -12,7 +12,7 @@ uniform vec3 viewPos;     // 카메라 위치
 
 void main ()
 {
-    vec3 ambientLight = vec3(0.3);
+    vec3 ambientLight = vec3(0.5);
     vec3 ambient = ambientLight * lightColor;
 
     vec3 norm = normalize(Normal);
