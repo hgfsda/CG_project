@@ -37,12 +37,12 @@ GLuint fragmentShader; //--- 프래그먼트 세이더 객체
 GLchar* vertexSource, * fragmentSource; //--- 소스코드 저장 변수
 
 float floor_xz[] = {
-	 -10.0, 0.0, -10.0,    0.0, 1.0, 0.0,  0, 0,
-	 -10.0, 0.0, 10.0,     0.0, 1.0, 0.0,  0, 1,
-	 10.0, 0.0, 10.0,      0.0, 1.0, 0.0,  1, 1,
-	 -10.0, 0.0, -10.0,    0.0, 1.0, 0.0,  0, 0,
-	 10.0, 0.0, 10.0,      0.0, 1.0, 0.0,  1, 1,
-	 10.0, 0.0, -10.0,     0.0, 1.0, 0.0,  1, 0
+	 -15.0, 0.0, -15.0,    0.0, 1.0, 0.0,  0, 0,
+	 -15.0, 0.0, 15.0,     0.0, 1.0, 0.0,  0, 1,
+	 15.0, 0.0, 15.0,      0.0, 1.0, 0.0,  1, 1,
+	 -15.0, 0.0, -15.0,    0.0, 1.0, 0.0,  0, 0,
+	 15.0, 0.0, 15.0,      0.0, 1.0, 0.0,  1, 1,
+	 15.0, 0.0, -15.0,     0.0, 1.0, 0.0,  1, 0
 };
 
 float rides_data[5][12] = {
@@ -60,7 +60,8 @@ GLfloat matrix_2[3][3] = { {2.0, -4.0, 2.0}, {-3.0, 4.0, -1.0}, {1.0, 0.0, 0.0} 
 GLfloat matrix_3[4][4] = { {-1.0, 3.0, -3.0, 1.0},
 						  {2.0, -5.0, 4.0, -1.0},
 						  {-1.0, 0.0, 1.0, 0.0},
-						  {0.0, 2.0, 0.0, 0.0} };
+						  {0.0, 2.0, 0.0, 0.0} 
+};
 
 GLuint vao[1000], vbo[1000];
 std::vector<GLfloat> data[1000];
@@ -213,7 +214,7 @@ GLvoid drawScene() {
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &vTransform[0][0]);
 
 		glm::mat4 pTransform = glm::mat4(1.0f);
-		pTransform = glm::ortho(11.0f, -11.0f, 11.0f, -11.0f, -11.0f, 11.0f);
+		pTransform = glm::ortho(16.0f, -16.0f, 16.0f, -16.0f, -16.0f, 16.0f);
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, &pTransform[0][0]);
 	}
 	else if (view_check == 1) {
@@ -255,7 +256,7 @@ GLvoid drawScene() {
 			}
 			if (i == 1) { // 롤러코스터인 경우
 				// 정점 찍기
-				glPointSize(7.0f);
+				glPointSize(10.0f);
 				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(border));
 				glUniform3f(objColorLocation, 1.0, 0.0, 0.0);
 				glBegin(GL_POINTS);
@@ -541,8 +542,8 @@ void Motion(int x, int y) {
 
 	if (view_check == 0) {
 		if (rides_install_check[rides_sel_cnt] == false) {
-			normalized_x = ((2.0 * x / 600) - 1.0) * 10;
-			normalized_y = ((2.0 * y / 600) - 1.0) * 10;
+			normalized_x = ((2.0 * x / 600) - 1.0) * 15;
+			normalized_y = ((2.0 * y / 600) - 1.0) * 15;
 			if (rides_sel_check[rides_sel_cnt] == true) {
 				rides_x[rides_sel_cnt] = normalized_x;
 				rides_z[rides_sel_cnt] = normalized_y;
@@ -575,16 +576,16 @@ void Motion(int x, int y) {
 // 기구의 충돌 검사
 BOOL rides_collision_check() {
 	if (rides_radian[rides_sel_cnt] == 0) {   // 회전하지 않은 기구가 바닥을 벗어난 경우
-		if (rides_x[rides_sel_cnt] - len_x[rides_sel_cnt] < -10) return rides_collision[rides_sel_cnt] = true;
-		if (rides_x[rides_sel_cnt] + len_x[rides_sel_cnt] > 10) return rides_collision[rides_sel_cnt] = true;
-		if (rides_z[rides_sel_cnt] - len_z[rides_sel_cnt] < -10) return rides_collision[rides_sel_cnt] = true;
-		if (rides_z[rides_sel_cnt] + len_z[rides_sel_cnt] > 10) return rides_collision[rides_sel_cnt] = true;
+		if (rides_x[rides_sel_cnt] - len_x[rides_sel_cnt] < -15) return rides_collision[rides_sel_cnt] = true;
+		if (rides_x[rides_sel_cnt] + len_x[rides_sel_cnt] > 15) return rides_collision[rides_sel_cnt] = true;
+		if (rides_z[rides_sel_cnt] - len_z[rides_sel_cnt] < -15) return rides_collision[rides_sel_cnt] = true;
+		if (rides_z[rides_sel_cnt] + len_z[rides_sel_cnt] > 15) return rides_collision[rides_sel_cnt] = true;
 	}
 	else if (rides_radian[rides_sel_cnt] == 90) {   // 회전한 기구가 바닥을 벗어난 경우
-		if (rides_x[rides_sel_cnt] - len_z[rides_sel_cnt] < -10) return rides_collision[rides_sel_cnt] = true;
-		if (rides_x[rides_sel_cnt] + len_z[rides_sel_cnt] > 10) return rides_collision[rides_sel_cnt] = true;
-		if (rides_z[rides_sel_cnt] - len_x[rides_sel_cnt] < -10) return rides_collision[rides_sel_cnt] = true;
-		if (rides_z[rides_sel_cnt] + len_x[rides_sel_cnt] > 10) return rides_collision[rides_sel_cnt] = true;
+		if (rides_x[rides_sel_cnt] - len_z[rides_sel_cnt] < -15) return rides_collision[rides_sel_cnt] = true;
+		if (rides_x[rides_sel_cnt] + len_z[rides_sel_cnt] > 15) return rides_collision[rides_sel_cnt] = true;
+		if (rides_z[rides_sel_cnt] - len_x[rides_sel_cnt] < -15) return rides_collision[rides_sel_cnt] = true;
+		if (rides_z[rides_sel_cnt] + len_x[rides_sel_cnt] > 15) return rides_collision[rides_sel_cnt] = true;
 	}
 	for (int i = 1; i < 5; ++i) {
 		if (i != rides_sel_cnt && rides_install_check[i] == true) {
