@@ -29,7 +29,6 @@ char* filetobuf(const char* file);
 void ReadObj(FILE* path, int index);
 
 BOOL rides_collision_check();
-void RollerCoaster_rand_num();
 
 GLuint shaderProgramID; //--- 세이더 프로그램 이름
 GLuint vertexShader; //--- 버텍스 세이더 객체
@@ -85,6 +84,8 @@ BOOL rides_install_check[5];  // 기구가 설치되었는지
 BOOL rides_collision[5];  // 설치 기구가 충돌하는지    충돌하면 true / 안하면 false
 float len_x[5], len_z[5];  // 기구 가로 세로 길이
 float rides_radian[5];     // 기구 회전
+float tree_x[30], tree_z[30];   // 나무 좌표
+int tree_cnt;     // 설치된 나무의 개수 
 
 void menu() {
 	printf("------------ top view 명령어-------------\n");
@@ -117,8 +118,11 @@ void reset() {
 	fov = 50;
 	view_check = 1;
 	rides_sel_cnt = 0;
+	tree_cnt = 30;
+	// 기구의 길이
 	len_x[1] = 9, len_x[2] = 5, len_x[3] = len_x[4] = 4;
 	len_z[1] = 3, len_z[2] = 2, len_z[3] = len_z[4] = 4;
+	// 기구 설치
 	for (int i = 0; i < 5; ++i) {
 		rides_install_check[i] = false;
 		rides_sel_check[i] = false;
@@ -126,7 +130,18 @@ void reset() {
 		rides_collision[i] = false;
 		rides_radian[i] = 0;
 	}
-	RollerCoaster_rand_num();   // 롤러코스터 정점 랜덤값
+	// 롤러코스터 정점 랜덤값
+	for (int i = 0; i < 8; ++i) {
+		point[i][1] = (rand() % 501 + 500) * 0.01;    // 5 <= y <= 10
+	}
+	point[8][0] = point[0][0];
+	point[8][1] = point[0][1];
+	point[8][2] = point[0][2];
+	// 나무 위치
+	for (int i = 0; i < tree_cnt; ++i) {
+		tree_x[i] = (rand() % 2801 - 1400) * 0.01;
+		tree_z[i] = (rand() % 2801 - 1400) * 0.01;
+	}
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -150,16 +165,6 @@ void reset() {
 	file_cone = fopen(cone_obj, "r");
 	ReadObj(file_cone, 3);
 	fclose(file_cone);
-}
-
-void RollerCoaster_rand_num() {
-	srand(time(NULL));
-	for (int i = 0; i < 8; ++i) {
-		point[i][1] = (rand() % 501 + 500) * 0.01;    // 5 <= y <= 10
-	}
-	point[8][0] = point[0][0];
-	point[8][1] = point[0][1];
-	point[8][2] = point[0][2];
 }
 
 void main(int argc, char** argv)
@@ -332,6 +337,29 @@ GLvoid drawScene() {
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(floor));
 	glBindVertexArray(vao[10]);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	// 나무
+	for (int i = 0; i < tree_cnt; ++i) {
+		glm::mat4 tree = glm::mat4(1.0f);
+		glm::mat4 tree_T = glm::mat4(1.0f);
+		glm::mat4 tree_S = glm::mat4(1.0f);
+		tree_T = glm::translate(tree_T, glm::vec3(tree_x[i], 0.7, tree_z[i]));
+		tree_S = glm::scale(tree_S, glm::vec3(0.3, 0.7, 0.3));
+		tree = tree_T * tree_S;
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(tree));
+		glBindVertexArray(vao[0]);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+
+		glm::mat4 tree_leaf = glm::mat4(1.0f);
+		glm::mat4 tree_leaf_T = glm::mat4(1.0f);
+		glm::mat4 tree_leaf_S = glm::mat4(1.0f);
+		tree_leaf_T = glm::translate(tree_leaf_T, glm::vec3(tree_x[i], 2.5, tree_z[i]));
+		tree_leaf_S = glm::scale(tree_leaf_S, glm::vec3(1.0, 1.5, 1.0));
+		tree_leaf = tree_leaf_T * tree_leaf_S;
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(tree_leaf));
+		glBindVertexArray(vao[2]);
+		glDrawArrays(GL_TRIANGLES, 0, 242);
+	}
 
 	glutSwapBuffers();
 }
