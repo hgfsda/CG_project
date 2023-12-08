@@ -29,6 +29,7 @@ char* filetobuf(const char* file);
 void ReadObj(FILE* path, int index);
 
 BOOL rides_collision_check();
+void tree_collisions();
 
 GLuint shaderProgramID; //--- 세이더 프로그램 이름
 GLuint vertexShader; //--- 버텍스 세이더 객체
@@ -499,8 +500,10 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 		break;
 	case 'b':
 		if (view_check == 0) {
-			if (rides_collision[rides_sel_cnt] == false)
+			if (rides_collision[rides_sel_cnt] == false) {
+				tree_collisions();
 				rides_install_check[rides_sel_cnt] = true;
+			}
 		}
 		break;
 	case 'r':
@@ -566,7 +569,6 @@ void Mouse(int button, int state, int x, int y) {
 
 void Motion(int x, int y) {
 	float normalized_x, normalized_y;
-
 
 	if (view_check == 0) {
 		if (rides_install_check[rides_sel_cnt] == false) {
@@ -652,6 +654,38 @@ BOOL rides_collision_check() {
 		}
 	}
 	return rides_collision[rides_sel_cnt] = false;
+}
+
+// 기구 설치 범위 내에 나무가 있으면 제거
+void tree_collisions() {
+	if (rides_radian[rides_sel_cnt] == 0) {   // 회전하지 않은 기구
+		for (int i = 0; i < tree_cnt; ++i) {
+			if (rides_x[rides_sel_cnt] - len_x[rides_sel_cnt] < tree_x[i] + 0.8 && rides_x[rides_sel_cnt] + len_x[rides_sel_cnt] > tree_x[i] - 0.8 &&
+				rides_z[rides_sel_cnt] - len_z[rides_sel_cnt] < tree_z[i] + 0.8 && rides_z[rides_sel_cnt] + len_z[rides_sel_cnt] > tree_z[i] - 0.8) {
+				for (int j = i; j < tree_cnt - 1; ++j) {
+					tree_x[j] = tree_x[j + 1];
+					tree_z[j] = tree_z[j + 1];
+				}
+				tree_x[tree_cnt - 1] = tree_z[tree_cnt - 1] = 0;
+				--tree_cnt;
+				--i;
+			}
+		}
+	}
+	else if (rides_radian[rides_sel_cnt] == 90) {   // 회전한 기구
+		for (int i = 0; i < tree_cnt; ++i) {
+			if (rides_x[rides_sel_cnt] - len_z[rides_sel_cnt] < tree_x[i] + 0.8 && rides_x[rides_sel_cnt] + len_z[rides_sel_cnt] > tree_x[i] - 0.8 &&
+				rides_z[rides_sel_cnt] - len_x[rides_sel_cnt] < tree_z[i] + 0.8 && rides_z[rides_sel_cnt] + len_x[rides_sel_cnt] > tree_z[i] - 0.8) {
+				for (int j = i; j < tree_cnt - 1; ++j) {
+					tree_x[j] = tree_x[j + 1];
+					tree_z[j] = tree_z[j + 1];
+				}
+				tree_x[tree_cnt - 1] = tree_z[tree_cnt - 1] = 0;
+				--tree_cnt;
+				--i;
+			}
+		}
+	}
 }
 
 GLvoid MouseWheel(int wheel, int direction, int x, int y) {
