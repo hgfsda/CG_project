@@ -29,6 +29,7 @@ char* filetobuf(const char* file);
 void ReadObj(FILE* path, int index);
 
 BOOL rides_collision_check();
+void RollerCoaster_rand_num();
 
 GLuint shaderProgramID; //--- 세이더 프로그램 이름
 GLuint vertexShader; //--- 버텍스 세이더 객체
@@ -51,6 +52,14 @@ float rides_data[5][12] = {
 	{4.0, 0.0, 4.0, -4.0, 0.0, 4.0, -4.0, 0.0, -4.0, 4.0, 0.0, -4.0},
 	{4.0, 0.0, 4.0, -4.0, 0.0, 4.0, -4.0, 0.0, -4.0, 4.0, 0.0, -4.0}
 };
+
+// 롤러코스터
+GLfloat point[8][3];
+GLfloat matrix_2[3][3] = { {2.0f, -4.0f, 2.0f}, {-3.0f, 4.0f, -1.0f}, {1.0f, 0.0f, 0.0f} };
+GLfloat matrix_3[4][4] = { {-1.0f, 3.0f, -3.0f, 1.0f},
+						  {2.0f, -5.0f, 4.0f, -1.0f},
+						  {-1.0f, 0.0f, 1.0f, 0.0f},
+						  {0.0f, 2.0f, 0.0f, 0.0f} };
 
 GLuint vao[1000], vbo[1000];
 std::vector<GLfloat> data[1000];
@@ -83,14 +92,16 @@ void menu() {
 	printf("4 : 회전목마 생성\n");
 	printf("b : 기구 설치\n");
 	printf("d : 기구 삭제\n");
-	printf("v : 시점 변경\n");
 	printf("----------- front view 명령어------------\n");
 	printf("1 : 롤러코스터 시점\n");
 	printf("2 : 관람차 시점\n");
 	printf("3 : 자이로드롭 시점\n");
 	printf("4 : 회전목마 시점\n");
 	printf("w, a, s, d : 카메라 이동\n");
+	printf("------------- 공용 명령어 ---------------\n");
 	printf("v : 시점 변경\n");
+	printf("` : 리셋\n");
+	printf("q : 프로그램 종료\n");
 	printf("-----------------------------------------\n");
 }
 
@@ -113,6 +124,7 @@ void reset() {
 		rides_collision[i] = false;
 		rides_radian[i] = 0;
 	}
+	RollerCoaster_rand_num();   // 롤러코스터 정점 랜덤값
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -125,6 +137,19 @@ void reset() {
 	}
 }
 
+void RollerCoaster_rand_num() {
+	srand(time(NULL));
+	for (int i = 0; i < 7; i++)
+	{
+		point[i][0] = (rand() % 1801 - 900) * 0.01;    // -9 <= x <= 9
+		point[i][1] = (rand() % 501 + 500) * 0.01;    // 5 <= y <= 10
+		point[i][2] = (rand() % 601 - 300) * 0.01;    // -3 <= z <= 3
+	}
+	point[7][0] = point[0][0];
+	point[7][1] = point[0][1];
+	point[7][2] = point[0][2];
+}
+
 void main(int argc, char** argv)
 {
 	srand(time(NULL));
@@ -133,7 +158,7 @@ void main(int argc, char** argv)
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 	glutInitWindowPosition(300, 30);
 	glutInitWindowSize(600, 600);
-	glutCreateWindow("Example");
+	glutCreateWindow("Amusement Park");
 	glewExperimental = GL_TRUE;
 	menu();
 	reset();
@@ -177,7 +202,7 @@ GLvoid drawScene() {
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &vTransform[0][0]);
 
 		glm::mat4 pTransform = glm::mat4(1.0f);
-		pTransform = glm::ortho(11.0f, -11.0f, 11.0f, -11.0f, 11.0f, -11.0f);
+		pTransform = glm::ortho(11.0f, -11.0f, 11.0f, -11.0f, -11.0f, 11.0f);
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, &pTransform[0][0]);
 	}
 	else if (view_check == 1) {
@@ -201,21 +226,40 @@ GLvoid drawScene() {
 	// 놀이 기구
 	for (int i = 1; i < 5; ++i) {
 		if (rides_sel_check[i] == true || rides_install_check[i] == true) {
+			glm::mat4 border = glm::mat4(1.0f);
+			glm::mat4 border_T = glm::mat4(1.0f);
+			glm::mat4 border_R = glm::mat4(1.0f);
+			border_T = glm::translate(border_T, glm::vec3(rides_x[i], 0.0, rides_z[i]));
+			border_R = glm::rotate(border_R, glm::radians(rides_radian[i]), glm::vec3(0.0, 1.0, 0.0));
+			border = border_T * border_R;
 			if (view_check == 0) {
 				glLineWidth(2);
 				if (!rides_collision[i])
 					glUniform3f(objColorLocation, 0.0, 1.0, 0.0);
 				else
 					glUniform3f(objColorLocation, 1.0, 0.0, 0.0);
-				glm::mat4 border = glm::mat4(1.0f);
-				glm::mat4 border_T = glm::mat4(1.0f);
-				glm::mat4 border_R = glm::mat4(1.0f);
-				border_T = glm::translate(border_T, glm::vec3(rides_x[i], 0, rides_z[i]));
-				border_R = glm::rotate(border_R, glm::radians(rides_radian[i]), glm::vec3(0.0, 1.0, 0.0));
-				border = border_T * border_R;
 				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(border));
 				glBindVertexArray(vao[i + 10]);
 				glDrawArrays(GL_LINE_LOOP, 0, 4);
+			}
+			if (i == 1) { // 롤러코스터인 경우
+				// 정점 찍기
+				glPointSize(7.0f);
+				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(border));
+				glUniform3f(objColorLocation, 1.0, 0.0, 0.0);
+				glBegin(GL_POINTS);
+				for (int i = 0; i < 8; ++i)
+					glVertex3f(point[i][0], point[i][1], point[i][2]);
+				glEnd();
+			}
+			else if (i == 2) {   // 관람차인 경우
+				 
+			}
+			else if (i == 3) {   // 자이로드롭인 경우
+
+			}
+			else if (i == 4) {   // 회전목마인 경우
+
 			}
 		}
 	}
