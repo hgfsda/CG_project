@@ -101,6 +101,10 @@ BOOL point_sel[8];  // 롤러코스터 정점 선택
 int point_sel_index;   // 선택된 정점의 인덱스
 float point_save[9][3];  // 초기 롤러코스터 위치;
 BOOL key_c, key_t;  // 롤러코스터 편집
+int rcl_cnt;    // 롤러코스터 이동
+GLfloat rcl;    // 롤러코스터 이동 거리
+GLfloat rc_x, rc_y, rc_z;   // 롤러코스터 기구 위치
+GLfloat nrc_x, nrc_y, nrc_z; // 롤러코스터 한칸 앞 위치
 
 void menu() {
 	printf("------------ top view 명령어-------------\n");
@@ -159,6 +163,10 @@ void reset() {
 	point[8][1] = point[0][1];
 	point[8][2] = point[0][2];
 	point_sel_index = 0;
+	rcl = 0;
+	rcl_cnt = 0;
+	rc_x = rc_y = rc_z = 0;
+	nrc_x = nrc_y = nrc_z = 0;
 	point_sel_reset();
 	// 나무 위치
 	for (int i = 0; i < tree_cnt; ++i) {
@@ -298,16 +306,8 @@ GLvoid drawScene() {
 					glDrawArrays(GL_LINE_LOOP, 0, 4);
 				}
 				if (i == 1) { // 롤러코스터인 경우
-					// 정점 찍기
-					glPointSize(10.0f);
-					glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(border));
-					glUniform3f(objColorLocation, 1.0, 0.0, 0.0);
-					glBegin(GL_POINTS);
-					for (int i = 0; i < 9; ++i)
-						glVertex3f(point[i][0], point[i][1], point[i][2]);    
-					glEnd();
-
 					// 곡선 그리기
+					glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(border));
 					glLineWidth(10.0f);
 					GLfloat result[4][3];
 					GLfloat t = 0.0f;
@@ -328,6 +328,7 @@ GLvoid drawScene() {
 						point_y = result[2][1] + t * (result[1][1] + result[0][1] * t);
 						point_z = result[2][2] + t * (result[1][2] + result[0][2] * t);
 						glVertex3f(point_x, point_y, point_z);
+
 						t += 0.01f;
 					}
 					glEnd();
@@ -366,6 +367,32 @@ GLvoid drawScene() {
 						glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(pillar));
 						glBindVertexArray(vao[1]);
 						glDrawArrays(GL_TRIANGLES, 0, 84);
+					}
+
+					// 이동 구
+					if (rides_install_check[1] == true) {
+						glUniform3f(objColorLocation, 0.0, 1.0, 0.0);
+						glm::mat4 rc = glm::mat4(1.0f);
+						glm::mat4 rc_T = glm::mat4(1.0f);
+						glm::mat4 rc_S = glm::mat4(1.0f);
+						rc_T = glm::translate(rc_T, glm::vec3(rc_x, rc_y, rc_z));
+						rc_S = glm::scale(rc_S, glm::vec3(0.5, 0.5, 0.5));
+						rc = border_T * rc_T * rc_S;
+						glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(rc));
+						glBindVertexArray(vao[2]);
+						glDrawArrays(GL_TRIANGLES, 0, 240);
+
+						glUniform3f(objColorLocation, 1.0, 0.0, 0.0);
+						glm::mat4 nrc = glm::mat4(1.0f);
+						glm::mat4 nrc_T = glm::mat4(1.0f);
+						glm::mat4 nrc_S = glm::mat4(1.0f);
+						nrc_T = glm::translate(nrc_T, glm::vec3(nrc_x, nrc_y, nrc_z));
+						nrc_S = glm::scale(nrc_S, glm::vec3(0.5, 0.5, 0.5));
+						nrc = border_T * nrc_T * nrc_S;
+						glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(nrc));
+						glBindVertexArray(vao[2]);
+						glDrawArrays(GL_TRIANGLES, 0, 240);
+
 					}
 				}
 				else if (i == 2) {   // 관람차인 경우
@@ -436,7 +463,7 @@ GLvoid drawScene() {
 			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &vTransform[0][0]);
 
 			glm::mat4 pTransform = glm::mat4(1.0f);
-			pTransform = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 10.0f, -10.0f);
+			pTransform = glm::ortho(10.0f, -10.0f, -10.0f, 10.0f, 10.0f, -10.0f);
 			glUniformMatrix4fv(projLoc, 1, GL_FALSE, &pTransform[0][0]);
 		}
 		// 정점 찍기
@@ -585,8 +612,63 @@ void timer(int value) {
 		cameraPos_y += glm::normalize(glm::cross(cameraDirection, cameraUp)).y;
 		cameraPos_z += glm::normalize(glm::cross(cameraDirection, cameraUp)).z;
 	}
-	if (rides_install_check[1] == true) {
+	if (rides_install_check[1] == true && !key_c) {
+		GLfloat result[4][3];
 
+		if (rcl_cnt == 0) {
+			memset(result, 0, sizeof(result));
+			for (int i = 0; i < 3; ++i) {
+				for (int j = 0; j < 3; ++j) {
+					result[i][0] += matrix_2[i][j] * point[j][0];
+					result[i][1] += matrix_2[i][j] * point[j][1];
+					result[i][2] += matrix_2[i][j] * point[j][2];
+				}
+			}
+
+			if (rcl < 0.5) {
+				rc_x = result[2][0] + rcl * (result[1][0] + result[0][0] * rcl);
+				rc_y = result[2][1] + rcl * (result[1][1] + result[0][1] * rcl);
+				rc_z = result[2][2] + rcl * (result[1][2] + result[0][2] * rcl);
+
+				nrc_x = result[2][0] + (rcl + 0.1) * (result[1][0] + result[0][0] * (rcl + 0.1));
+				nrc_y = result[2][1] + (rcl + 0.1) * (result[1][1] + result[0][1] * (rcl + 0.1));
+				nrc_z = result[2][2] + (rcl + 0.1) * (result[1][2] + result[0][2] * (rcl + 0.1));
+				rcl += 0.05;
+			}
+			else {
+				rcl = 0.0f;
+				rcl_cnt = 1;
+			}
+		}
+		else if (rcl_cnt < 8 && rcl_cnt > 0) {
+			memset(result, 0, sizeof(result));
+			for (int i = 0; i < 4; ++i) {
+				for (int j = 0; j < 4; ++j) {
+					result[i][0] += matrix_3[i][j] * point[j + rcl_cnt-1][0];
+					result[i][1] += matrix_3[i][j] * point[j + rcl_cnt-1][1];
+					result[i][2] += matrix_3[i][j] * point[j + rcl_cnt-1][2];
+				}
+			}
+
+			if (rcl < 1.0f) {
+				rc_x = (result[3][0] + rcl * (result[2][0] + rcl * (result[1][0] + result[0][0] * rcl))) * 0.5f;
+				rc_y = (result[3][1] + rcl * (result[2][1] + rcl * (result[1][1] + result[0][1] * rcl))) * 0.5f;
+				rc_z = (result[3][2] + rcl * (result[2][2] + rcl * (result[1][2] + result[0][2] * rcl))) * 0.5f;
+
+				nrc_x = (result[3][0] + (rcl + 0.1) * (result[2][0] + (rcl + 0.1) * (result[1][0] + result[0][0] * (rcl + 0.1)))) * 0.5f;
+				nrc_y = (result[3][1] + (rcl + 0.1) * (result[2][1] + (rcl + 0.1) * (result[1][1] + result[0][1] * (rcl + 0.1)))) * 0.5f;
+				nrc_z = (result[3][2] + (rcl + 0.1) * (result[2][2] + (rcl + 0.1) * (result[1][2] + result[0][2] * (rcl + 0.1)))) * 0.5f;
+				rcl += 0.1f;
+			}
+			else if (rcl >= 1.0f && rcl_cnt < 7) {
+				rcl = 0;
+				++rcl_cnt;
+			}
+			else if (rcl_cnt == 7) {
+				rcl = 0;
+				rcl_cnt = 0;
+			}
+		}
 	}
 	if (rides_install_check[2] == true) {
 
@@ -729,6 +811,7 @@ GLvoid KeyboardUp(unsigned char key, int x, int y) {
 	drawScene();
 }
 
+// 선택 초기화
 void point_sel_reset() {
 	for (int i = 0; i < 8; ++i)
 		point_sel[i] = false;
@@ -740,7 +823,7 @@ void Mouse(int button, int state, int x, int y) {
 
 	if (view_check == 0) {
 	}
-	else if (view_check == 1) {
+	else if (view_check == 1 && !key_c) {
 		normalized_x = (2.0 * x / 600) - 1.0;
 		normalized_y = 1.0 - (2.0 * y / 600);
 		if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
@@ -771,7 +854,7 @@ void Mouse(int button, int state, int x, int y) {
 		}
 		// front view
 		else {
-			normalized_x = (1.0 - (2.0 * x / 600)) * 10;
+			normalized_x = ((2.0 * x / 600) - 1.0) * 10;
 			normalized_y = (1.0 - (2.0 * y / 600)) * 10;
 			if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
 				for (int i = 0; i < 8; ++i) {
@@ -840,7 +923,7 @@ void Motion(int x, int y) {
 			}
 		}
 		else {
-			normalized_x = (1.0 - (2.0 * x / 600)) * 10;
+			normalized_x = ((2.0 * x / 600) - 1.0) * 10;
 			normalized_y = (1.0 - (2.0 * y / 600)) * 10;
 			if (point_sel[point_sel_index] == true) {
 				if (normalized_x >= -8 && normalized_x <= 8 &&
