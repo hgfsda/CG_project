@@ -770,7 +770,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 		}
 		break;
 	case 'c':
-		if(rides_install_check[1] == true)
+		if(rides_install_check[1] == true && view_check == 0)
 			key_c = !key_c;
 		break;
 	case 't':
