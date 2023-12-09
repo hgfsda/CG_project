@@ -30,6 +30,7 @@ void ReadObj(FILE* path, int index);
 
 BOOL rides_collision_check();
 void tree_collisions();
+void point_sel_reset();
 
 GLuint shaderProgramID; //--- 세이더 프로그램 이름
 GLuint vertexShader; //--- 버텍스 세이더 객체
@@ -43,6 +44,15 @@ float floor_xz[] = {
 	 -15.0, 0.0, -15.0,    0.0, 1.0, 0.0,  0, 0,
 	 15.0, 0.0, 15.0,      0.0, 1.0, 0.0,  1, 1,
 	 15.0, 0.0, -15.0,     0.0, 1.0, 0.0,  1, 0
+};
+
+float floor_rollercoaster[] = {
+	 -9.0, 0.0, -3.0,    0.0, 1.0, 0.0,  0, 0,
+	 -9.0, 0.0, 3.0,     0.0, 1.0, 0.0,  0, 1,
+	 9.0, 0.0, 3.0,      0.0, 1.0, 0.0,  1, 1,
+	 -9.0, 0.0, -3.0,    0.0, 1.0, 0.0,  0, 0,
+	 9.0, 0.0, 3.0,      0.0, 1.0, 0.0,  1, 1,
+	 9.0, 0.0, -3.0,     0.0, 1.0, 0.0,  1, 0
 };
 
 float rides_data[5][12] = {
@@ -149,6 +159,7 @@ void reset() {
 	point[8][1] = point[0][1];
 	point[8][2] = point[0][2];
 	point_sel_index = 0;
+	point_sel_reset();
 	// 나무 위치
 	for (int i = 0; i < tree_cnt; ++i) {
 		tree_x[i] = (rand() % 2801 - 1400) * 0.01;
@@ -283,7 +294,7 @@ GLvoid drawScene() {
 					else
 						glUniform3f(objColorLocation, 1.0, 0.0, 0.0);
 					glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(border));
-					glBindVertexArray(vao[i + 10]);
+					glBindVertexArray(vao[i + 6]);
 					glDrawArrays(GL_LINE_LOOP, 0, 4);
 				}
 				if (i == 1) { // 롤러코스터인 경우
@@ -293,11 +304,11 @@ GLvoid drawScene() {
 					glUniform3f(objColorLocation, 1.0, 0.0, 0.0);
 					glBegin(GL_POINTS);
 					for (int i = 0; i < 9; ++i)
-						glVertex3f(point[i][0], point[i][1], point[i][2]);
+						glVertex3f(point[i][0], point[i][1], point[i][2]);    
 					glEnd();
 
 					// 곡선 그리기
-					glLineWidth(20.0f);
+					glLineWidth(10.0f);
 					GLfloat result[4][3];
 					GLfloat t = 0.0f;
 					GLfloat point_x, point_y, point_z;
@@ -373,7 +384,7 @@ GLvoid drawScene() {
 		glm::mat4 floor = glm::mat4(1.0f);
 		glUniform3f(objColorLocation, 0.5, 0.5, 0.5);
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(floor));
-		glBindVertexArray(vao[10]);
+		glBindVertexArray(vao[5]);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		// 나무
@@ -402,12 +413,111 @@ GLvoid drawScene() {
 	else {
 		// top view
 		if (!key_t) {
+			glm::vec3 cameraPos = glm::vec3(0.0f, 5.0f, 0.0f);
+			glm::vec3 cameraDirection = glm::vec3(0.0f, 0.0f, 0.0f);
+			glm::vec3 cameraUp = glm::vec3(0.0f, 0.0f, 1.0f);
 
+			glm::mat4 vTransform = glm::mat4(1.0f);
+			vTransform = glm::lookAt(cameraPos, cameraDirection, cameraUp);
+			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &vTransform[0][0]);
+
+			glm::mat4 pTransform = glm::mat4(1.0f);
+			pTransform = glm::ortho(10.0f, -10.0f, 10.0f, -10.0f, -10.0f, 10.0f);
+			glUniformMatrix4fv(projLoc, 1, GL_FALSE, &pTransform[0][0]);
 		}
 		// front view
 		else {
+			glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, -5.0f);
+			glm::vec3 cameraDirection = glm::vec3(0.0f, 0.0f, 0.0f);
+			glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
+			glm::mat4 vTransform = glm::mat4(1.0f);
+			vTransform = glm::lookAt(cameraPos, cameraDirection, cameraUp);
+			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &vTransform[0][0]);
+
+			glm::mat4 pTransform = glm::mat4(1.0f);
+			pTransform = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 10.0f, -10.0f);
+			glUniformMatrix4fv(projLoc, 1, GL_FALSE, &pTransform[0][0]);
 		}
+		// 정점 찍기
+		glm::mat4 line = glm::mat4(1.0f);
+		if(key_t)
+			line = glm::translate(line, glm::vec3(0, -5, 0));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(line));
+		glPointSize(10.0f);
+		glUniform3f(objColorLocation, 1.0, 0.0, 0.0);
+		glBegin(GL_POINTS);
+		for (int i = 0; i < 9; ++i)
+			glVertex3f(point[i][0], point[i][1], point[i][2]);
+		glEnd();
+
+		// 곡선 그리기
+		glLineWidth(10.0f);
+		GLfloat result[4][3];
+		GLfloat t = 0.0f;
+		GLfloat point_x, point_y, point_z;
+
+		memset(result, 0, sizeof(result));
+		for (int i = 0; i < 3; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				result[i][0] += matrix_2[i][j] * point[j][0];
+				result[i][1] += matrix_2[i][j] * point[j][1];
+				result[i][2] += matrix_2[i][j] * point[j][2];
+			}
+		}
+		glUniform3f(objColorLocation, 0.0, 1.0, 0.0);
+		glBegin(GL_LINE_STRIP);
+		while (t < 0.5f) {
+			point_x = result[2][0] + t * (result[1][0] + result[0][0] * t);
+			point_y = result[2][1] + t * (result[1][1] + result[0][1] * t);
+			point_z = result[2][2] + t * (result[1][2] + result[0][2] * t);
+			glVertex3f(point_x, point_y, point_z);
+			t += 0.01f;
+		}
+		glEnd();
+
+		for (int cubic_case = 0; cubic_case < 9 - 2; ++cubic_case) {
+			memset(result, 0, sizeof(result));
+			for (int i = 0; i < 4; ++i) {
+				for (int j = 0; j < 4; ++j) {
+					result[i][0] += matrix_3[i][j] * point[j + cubic_case][0];
+					result[i][1] += matrix_3[i][j] * point[j + cubic_case][1];
+					result[i][2] += matrix_3[i][j] * point[j + cubic_case][2];
+				}
+			}
+
+			t = 0.0f;
+			glBegin(GL_LINE_STRIP);
+			while (t < 1.0f) {
+				point_x = (result[3][0] + t * (result[2][0] + t * (result[1][0] + result[0][0] * t))) * 0.5f;
+				point_y = (result[3][1] + t * (result[2][1] + t * (result[1][1] + result[0][1] * t))) * 0.5f;
+				point_z = (result[3][2] + t * (result[2][2] + t * (result[1][2] + result[0][2] * t))) * 0.5f;
+				glVertex3f(point_x, point_y, point_z);
+				t += 0.01f;
+			}
+			glEnd();
+		}
+
+		// 원기둥
+		for (int i = 0; i < 8; ++i) {
+			glUniform3f(objColorLocation, 0.3, 0.3, 0.3);
+			glm::mat4 pillar = glm::mat4(1.0f);
+			glm::mat4 pillar_T = glm::mat4(1.0f);
+			glm::mat4 pillar_S = glm::mat4(1.0f);
+			pillar_T = glm::translate(pillar_T, glm::vec3(point[i][0], point[i][1] / 2, point[i][2]));
+			pillar_S = glm::scale(pillar_S, glm::vec3(0.3, point[i][1] / 2, 0.3));
+			pillar = line * pillar_T * pillar_S;
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(pillar));
+			glBindVertexArray(vao[1]);
+			glDrawArrays(GL_TRIANGLES, 0, 84);
+		}
+
+		// 바닥
+		glm::mat4 floor = glm::mat4(1.0f);
+		glUniform3f(objColorLocation, 0.5, 0.5, 0.5);
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(floor));
+		glBindVertexArray(vao[6]);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 
 	glutSwapBuffers();
@@ -430,22 +540,25 @@ void InitBuffer()
 		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 		glEnableVertexAttribArray(2);
 	}
-
-	glBindVertexArray(vao[10]);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[10]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(floor_xz), floor_xz, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-	glEnableVertexAttribArray(2);
-
-	for (int i = 11; i < 15; ++i) {
+	for (int i = 5; i < 7; ++i) {
 		glBindVertexArray(vao[i]);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo[i]);
-		glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(GLfloat), rides_data[i - 10], GL_STATIC_DRAW);
+		if(i == 5)
+			glBufferData(GL_ARRAY_BUFFER, sizeof(floor_xz), floor_xz, GL_STATIC_DRAW);
+		else if (i == 6)
+			glBufferData(GL_ARRAY_BUFFER, sizeof(floor_rollercoaster), floor_rollercoaster, GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+		glEnableVertexAttribArray(2);
+	}
+
+	for (int i = 7; i < 11; ++i) {
+		glBindVertexArray(vao[i]);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo[i]);
+		glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(GLfloat), rides_data[i - 6], GL_STATIC_DRAW);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 		glEnableVertexAttribArray(0);
 	}
@@ -510,11 +623,11 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 		}
 		break;
 	case 'v':
-		if (view_check == 1) {
+		if (view_check == 1 && !key_c) {
 			key_w = key_a = key_s = key_d = false;
 			view_check = 0;
 		}
-		else if (view_check == 0) {
+		else if (view_check == 0 && !key_c) {
 			for (int i = 0; i < 5; ++i) {
 				rides_sel_check[i] = false;
 			}
@@ -578,6 +691,10 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 		if(rides_install_check[1] == true)
 			key_c = !key_c;
 		break;
+	case 't':
+		if (key_c)
+			key_t = !key_t;
+		break;
 	case '`':   // 리셋
 		reset();
 		InitBuffer();
@@ -612,6 +729,11 @@ GLvoid KeyboardUp(unsigned char key, int x, int y) {
 	drawScene();
 }
 
+void point_sel_reset() {
+	for (int i = 0; i < 8; ++i)
+		point_sel[i] = false;
+}
+
 float prev_mouse_x, prev_mouse_y;
 void Mouse(int button, int state, int x, int y) {
 	float normalized_x, normalized_y;
@@ -631,15 +753,34 @@ void Mouse(int button, int state, int x, int y) {
 		}
 	}
 	if (key_c) {
-		normalized_x = ((2.0 * x / 600) - 1.0) * 15;
-		normalized_y = ((2.0 * y / 600) - 1.0) * 15;
-		if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN && rides_install_check[1] == true && rides_sel_cnt == 1) {
-			for (int i = 0; i < 8; ++i) {
-				if (normalized_x > point[i][0] - 1.0 && normalized_x < point[i][0] + 1.0 &&
-					normalized_y > point[i][2] - 1.0 && normalized_y < point[i][2] + 1.0 ) {
-					point_sel[i] = true;
-					point_sel_index = i;
-					break;
+		point_sel_reset();
+		// top view
+		if (!key_t) {
+			normalized_x = ((2.0 * x / 600) - 1.0) * 10;
+			normalized_y = ((2.0 * y / 600) - 1.0) * 10;
+			if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+				for (int i = 0; i < 8; ++i) {
+					if (normalized_x > point[i][0] - 1.0 && normalized_x < point[i][0] + 1.0 &&
+						normalized_y > point[i][2] - 1.0 && normalized_y < point[i][2] + 1.0) {
+						point_sel[i] = true;
+						point_sel_index = i;
+						break;
+					}
+				}
+			}
+		}
+		// front view
+		else {
+			normalized_x = (1.0 - (2.0 * x / 600)) * 10;
+			normalized_y = (1.0 - (2.0 * y / 600)) * 10;
+			if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+				for (int i = 0; i < 8; ++i) {
+					if (normalized_x > point[i][0] - 1.0 && normalized_x < point[i][0] + 1.0 &&
+						normalized_y > point[i][1] - 6.0 && normalized_y < point[i][1] - 4.0) {
+						point_sel[i] = true;
+						point_sel_index = i;
+						break;
+					}
 				}
 			}
 		}
@@ -660,19 +801,6 @@ void Motion(int x, int y) {
 				rides_collision_check();
 			}
 		}
-		if (point_sel[point_sel_index] == true) {
-			if (normalized_x >= rides_x[1] - 8 && normalized_x <= rides_x[1] + 8 &&
-				normalized_y >= rides_z[1] - 2.5 && normalized_y <= rides_z[1] + 2.5) {
-				if (point_sel_index == 0) {
-					point[0][0] = point[8][0] = normalized_x;
-					point[0][2] = point[8][2] = normalized_y;
-				}
-				else {
-					point[point_sel_index][0] = normalized_x;
-					point[point_sel_index][2] = normalized_y;
-				}
-			}
-		}
 	}
 	else if (view_check == 1) {
 		normalized_x = (2.0 * x / 600) - 1.0;
@@ -691,6 +819,42 @@ void Motion(int x, int y) {
 				pitch = 89.0f;
 			if (pitch < -89.0f)
 				pitch = -89.0f;
+		}
+	}
+	if (key_c) {
+		if (!key_t) {
+			normalized_x = ((2.0 * x / 600) - 1.0) * 10;
+			normalized_y = ((2.0 * y / 600) - 1.0) * 10;
+			if (point_sel[point_sel_index] == true) {
+				if (normalized_x >= -8 && normalized_x <= 8 &&
+					normalized_y >= -2.5 && normalized_y <= 2.5) {
+					if (point_sel_index == 0) {
+						point[0][0] = point[8][0] = normalized_x;
+						point[0][2] = point[8][2] = normalized_y;
+					}
+					else {
+						point[point_sel_index][0] = normalized_x;
+						point[point_sel_index][2] = normalized_y;
+					}
+				}
+			}
+		}
+		else {
+			normalized_x = (1.0 - (2.0 * x / 600)) * 10;
+			normalized_y = (1.0 - (2.0 * y / 600)) * 10;
+			if (point_sel[point_sel_index] == true) {
+				if (normalized_x >= -8 && normalized_x <= 8 &&
+					normalized_y >= -3.0 && normalized_y <= 10) {
+					if (point_sel_index == 0) {
+						point[0][0] = point[8][0] = normalized_x;
+						point[0][1] = point[8][1] = normalized_y + 5;
+					}
+					else {
+						point[point_sel_index][0] = normalized_x;
+						point[point_sel_index][1] = normalized_y + 5;
+					}
+				}
+			}
 		}
 	}
 	drawScene();
